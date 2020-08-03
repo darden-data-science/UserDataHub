@@ -381,7 +381,7 @@ class UserConfigurator(LoggingConfigurable):
 class NFSUserConfigurator(UserConfigurator):
 
     root_path = Any(
-        default_value="/Users/Michael/Documents/Git Projects/UserDataHub/test_folders/",
+        default_value="/mnt/efs",
         allow_none=False,
         help="""
         The path to the root of the data folder.
@@ -405,7 +405,7 @@ class NFSUserConfigurator(UserConfigurator):
     ).tag(config=True)
 
     user_section_base_folder = Unicode(
-        default_value="/Users/Michael/Documents/Git Projects/UserDataHub/test_folders_symlink",
+        default_value="/mnt/efs",
         allow_none=False,
         help="""
         The location that will be the root path for mounting group folders.

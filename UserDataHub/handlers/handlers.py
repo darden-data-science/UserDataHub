@@ -35,10 +35,15 @@ class GetUser(BaseHandler):
     def configurator(self):
         return self.settings.get('configurator')
 
+    @property
+    def auth_token_valid_time(self):
+        return self.settings.get('auth_token_valid_time')
+
     def get(self):
         if self.get_argument('user', False):
-            user = self.get_secure_cookie(name='user_data', value=self.get_argument('user')).decode('utf-8')
+            user = self.get_secure_cookie(name='user_data', value=self.get_argument('user'))
             if user is not None:
+                user = user.decode('utf-8')
                 self.set_header('Content-Type', 'text/plain')
                 user_data = self.configurator.get_user_data(user)
                 if user_data is None:

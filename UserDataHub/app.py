@@ -11,7 +11,7 @@ from tornado_sqlalchemy import SQLAlchemy
 
 from traitlets.config import Application, catch_config_error
 
-from traitlets import List, Bool, Integer, Set, Unicode, Dict, Any, default, observe, Instance, Float, validate, Bytes, Type, TraitError
+from traitlets import List, Bool, Integer, Set, Unicode, Dict, Any, default, observe, Instance, Float, validate, Bytes, Type, TraitError, Int
 from .handlers import Template404, HealthCheckHandler, GetUser
 from .users import UserConfigurator, NFSUserConfigurator
 
@@ -59,7 +59,7 @@ class UserDataHub(Application):
         Loaded from the AUTH_COOKIE_SECRET env variable by default.
         Should be exactly 256 bits (32 bytes).
         """
-    ).tag(config=True, env='AUTH_COOKIE_SECRET')
+    ).tag(config=True, env='USERDATAHUB_COOKIE_SECRET')
 
     @observe('cookie_secret')
     def _cookie_secret_check(self, change):
@@ -81,6 +81,12 @@ class UserDataHub(Application):
         'sqlite:///userdatahub.sqlite',
         help="url for the database. e.g. `sqlite:///userdatahub.sqlite`",
     ).tag(config=True)
+
+    auth_token_valid_time = Int(300,
+        help="""
+        Time in seconds that the auth token will be valid.
+        """
+    )
 
     @default('log_level')
     def _log_level_default(self):
@@ -200,8 +206,8 @@ class UserDataHub(Application):
         self.tornado_settings = dict(
             config = self.config,
             log=self.log,
-            # cookie_secret = self.cookie_secret,
-            cookie_secret = b'e42c608e4e88d75bfc205e580e3a51c8191b546de7941afdfc5e037a3e8b0ec2',
+            cookie_secret = self.cookie_secret,
+            auth_token_valid_time = self.auth_token_valid_time,
             app = self,
             configurator = self.configurator,
             db = db
