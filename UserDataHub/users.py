@@ -187,17 +187,9 @@ class UserConfigurator(LoggingConfigurable):
         """
     ).tag(config=True)
 
-    prepend_default = Bool(
-        default_value=True,
-        help="""
-        Whether or not to prepend the default value to the profile list.
-        """
-    ).tag(config=True)
-
     def __init__(self, 
                  section_dict, 
                  root_path = None, 
-                 prepend_default = None, 
                  enable_custom_allowed = False,
                  **kwargs):
 
@@ -206,8 +198,6 @@ class UserConfigurator(LoggingConfigurable):
         self.log.info("Initializing the UserConfigurator")
         self.section_dict = self.get_section_dict(section_dict)
         self.user_dict = self.get_user_dict()
-        if prepend_default is not None:
-            self.prepend_default = prepend_default
         if enable_custom_allowed is not None:
             self.enable_custom_allowed = enable_custom_allowed
 
@@ -423,10 +413,9 @@ class NFSUserConfigurator(UserConfigurator):
     def __init__(self, 
                  section_dict, 
                  root_path = None, 
-                 prepend_default = None, 
                  enable_custom_allowed = None,
                  **kwargs):
-        super().__init__(section_dict, root_path, prepend_default, enable_custom_allowed, **kwargs)
+        super().__init__(section_dict, root_path, enable_custom_allowed, **kwargs)
         self.log.info("Initializing the NFSUserConfigurator")
 
         if root_path is not None:

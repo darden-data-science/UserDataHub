@@ -88,7 +88,7 @@ class GetUsers(UserAPI):
 
         else:
 
-            self.log.warning("Query is malformed.")
+            self.log.warning("Query is malformed for all user list access.")
             raise web.HTTPError(400)
 
         self.finish()
