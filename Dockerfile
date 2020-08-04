@@ -42,6 +42,8 @@ COPY . /src/UserDataHub
 RUN python3 -m pip install /src/UserDataHub && \
     rm -rf tmp/UserDataHub
 
+COPY ./profile_files /etc/userdatahub/profile_files
+
 WORKDIR /srv/userdatahub
 
 # RUN chown ${AUTH_SERVER_USER}:${AUTH_SERVER_USER} /srv/auth_server

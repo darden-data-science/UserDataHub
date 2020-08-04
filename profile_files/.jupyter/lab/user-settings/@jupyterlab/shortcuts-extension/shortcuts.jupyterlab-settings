@@ -1,0 +1,45 @@
+{
+    "shortcuts": [
+        {
+            "command": "notebook:change-cell-to-markdown",
+            "keys": [
+                "M"
+            ],
+            "selector": ".jp-Notebook:focus",
+            "disabled": true
+        },
+        {
+            "command": "notebook:change-cell-to-raw",
+            "keys": [
+                "R"
+            ],
+            "selector": ".jp-Notebook:focus",
+            "disabled": true
+        },
+        {
+            "command": "notebook:change-cell-to-code",
+            "keys": [
+                "Y"
+            ],
+            "selector": ".jp-Notebook:focus",
+            "disabled": true
+        },
+        {
+            "command": "notebook:cut-cell",
+            "keys": [
+                "X"
+            ],
+            "selector": ".jp-Notebook:focus",
+            "disabled": true
+        },
+        {
+            "command": "notebook:delete-cell",
+            "keys": [
+                "D",
+                "D"
+            ],
+            "selector": ".jp-Notebook:focus",
+            "disabled": true
+        },
+    ]
+}

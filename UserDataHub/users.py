@@ -173,7 +173,7 @@ def create_directory(path, uid=1000, gid=1000, mode=0o750, sticky_bit=False):
     if sticky_bit:
         effective_mode = stat.S_ISGID | mode
     path.mkdir(mode=0o750, exist_ok=True)
-    # os.chown(str(path), uid, gid)
+    os.chown(str(path), uid, gid)
     path.chmod(mode=effective_mode)
 
 
@@ -522,10 +522,20 @@ class NFSUserConfigurator(UserConfigurator):
         # I need to set up the profile files
         skel_path = Path(self.profile_files_folder)
         if skel_path.is_dir():
-            for file in skel_path.iterdir():
-                if not user_folder.joinpath(file.name).exists():
-                    shutil.copy(file, user_folder.joinpath(file.name))
-                    # os.chown(user_folder.joinpath(file.name), uid=uid, gid=uid)
+            for root, dirs, files in os.walk(skel_path, followlinks=True):
+                relative_path = os.path.relpath(root, skel_path)
+                for file_ in files:
+                    if not user_folder.joinpath(relative_path).joinpath(file_).exists():
+                        shutil.copy(Path(root).joinpath(file_), user_folder.joinpath(relative_path).joinpath(file_))
+                        os.chown(user_folder.joinpath(relative_path).joinpath(file_), uid=1000, gid=1000)
+                for dir_ in dirs:
+                    create_directory(user_folder.joinpath(relative_path).joinpath(dir_))
+                    os.chown(user_folder.joinpath(relative_path).joinpath(dir_), uid=1000, gid=1000)
+
+            # for file in skel_path.iterdir():
+            #     if not user_folder.joinpath(file.name).exists():
+            #         shutil.copy(file, user_folder.joinpath(file.name))
+            #         # os.chown(user_folder.joinpath(file.name), uid=uid, gid=uid)
         self.symlink_group_folders(user_folder, user_data)
         return
 
@@ -567,6 +577,7 @@ class NFSUserConfigurator(UserConfigurator):
                     src = new_src
 
                 src.symlink_to(dest, target_is_directory=True)
+                os.chown(src, uid=1000, gid=1000, follow_symlinks=False)
         return
 
 

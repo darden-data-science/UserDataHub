@@ -41,7 +41,7 @@ class GetUser(BaseHandler):
 
     def get(self):
         if self.get_argument('user', False):
-            user = self.get_secure_cookie(name='user_data', value=self.get_argument('user'))
+            user = self.get_secure_cookie(name='user_data', value=self.get_argument('user'), max_age_days=self.auth_token_valid_time/86400)
             if user is not None:
                 user = user.decode('utf-8')
                 self.set_header('Content-Type', 'text/plain')
