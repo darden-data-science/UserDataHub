@@ -47,8 +47,6 @@ COPY . /src/UserDataHub
 RUN python3 -m pip install /src/UserDataHub && \
     rm -rf tmp/UserDataHub
 
-COPY ./profile_files /etc/userdatahub/profile_files
-
 WORKDIR /srv/userdatahub
 
 RUN chown ${USERDATAHUB_USER}:${USERDATAHUB_USER} /srv/userdatahub

@@ -402,13 +402,13 @@ class NFSUserConfigurator(UserConfigurator):
         """
     ).tag(config=True)
 
-    profile_files_folder = Unicode(
-        default_value="/etc/userdatahub/profile_files",
-        allow_none=False,
-        help="""
-        The location that will house files to copy to the user directories.
-        """
-    ).tag(config=True)
+    # profile_files_folder = Unicode(
+    #     default_value="/etc/userdatahub/profile_files",
+    #     allow_none=False,
+    #     help="""
+    #     The location that will house files to copy to the user directories.
+    #     """
+    # ).tag(config=True)
 
     def __init__(self, 
                  section_dict, 
@@ -509,16 +509,17 @@ class NFSUserConfigurator(UserConfigurator):
         # trash_folder = self.root_path.joinpath(".Trash-" + str(uid) + "/")
         # create_directory(trash_folder, uid=uid, gid=uid, mode=mode)
         # I need to set up the profile files
-        skel_path = Path(self.profile_files_folder)
-        if skel_path.is_dir():
-            for root, dirs, files in os.walk(skel_path, followlinks=True):
-                relative_path = os.path.relpath(root, skel_path)
-                for file_ in files:
-                    if not user_folder.joinpath(relative_path).joinpath(file_).exists():
-                        shutil.copy(Path(root).joinpath(file_), user_folder.joinpath(relative_path).joinpath(file_))
-                        # os.chown(user_folder.joinpath(relative_path).joinpath(file_), uid=1000, gid=1000)
-                for dir_ in dirs:
-                    create_directory(user_folder.joinpath(relative_path).joinpath(dir_))
+        # self.log.info("Copying files into home folder.")
+        # skel_path = Path(self.profile_files_folder)
+        # if skel_path.is_dir():
+        #     for root, dirs, files in os.walk(skel_path, followlinks=True):
+        #         relative_path = os.path.relpath(root, skel_path)
+        #         for file_ in files:
+        #             if not user_folder.joinpath(relative_path).joinpath(file_).exists():
+        #                 shutil.copy(Path(root).joinpath(file_), user_folder.joinpath(relative_path).joinpath(file_))
+        #                 # os.chown(user_folder.joinpath(relative_path).joinpath(file_), uid=1000, gid=1000)
+        #         for dir_ in dirs:
+        #             create_directory(user_folder.joinpath(relative_path).joinpath(dir_))
                     # os.chown(user_folder.joinpath(relative_path).joinpath(dir_), uid=1000, gid=1000)
 
             # for file in skel_path.iterdir():
