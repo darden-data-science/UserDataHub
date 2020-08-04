@@ -1,4 +1,7 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
+
+ENV TZ=America/New_York
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -19,23 +22,25 @@ RUN apt-get update && \
       && \
     apt-get purge && apt-get clean
 
+ARG USERDATAHUB_USER=jovyan
+ARG USERDATAHUB_UID=1000
 
-# ARG HOME=/home/jovyan
+ARG HOME=/home/jovyan
 
 ENV LANG C.UTF-8
 
-# RUN adduser --disabled-password \
-#     --gecos "Default user" \
-#     --uid ${AUTH_SERVER_UID} \
-#     --home ${HOME} \
-#     --force-badname \
-#     ${AUTH_SERVER_USER}
+RUN adduser --disabled-password \
+    --gecos "Default user" \
+    --uid ${USERDATAHUB_UID} \
+    --home ${HOME} \
+    --force-badname \
+    ${USERDATAHUB_USER}
 
 RUN python3 -m pip install --upgrade --no-cache setuptools pip
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends pkg-config libxmlsec1-dev && \
-    apt-get purge && apt-get clean
+# RUN apt-get update && \
+#     apt-get install -y --no-install-recommends pkg-config libxmlsec1-dev && \
+#     apt-get purge && apt-get clean
 
 COPY . /src/UserDataHub
 
@@ -46,7 +51,7 @@ COPY ./profile_files /etc/userdatahub/profile_files
 
 WORKDIR /srv/userdatahub
 
-# RUN chown ${AUTH_SERVER_USER}:${AUTH_SERVER_USER} /srv/auth_server
+RUN chown ${USERDATAHUB_USER}:${USERDATAHUB_USER} /srv/userdatahub
 
 # COPY authhub_config.py /etc/auth_server/authhub_config.py
 
@@ -54,6 +59,6 @@ WORKDIR /srv/userdatahub
 
 EXPOSE 8000
 
-USER ${AUTH_SERVER_USER}
+USER ${USERDATAHUB_USER}
 
-CMD ["auth_server", "--config", "/etc/userdatahub/userdatahub_config.json"]
+CMD ["userdatahub", "--config", "/etc/userdatahub/userdatahub_config.json"]
