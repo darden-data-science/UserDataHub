@@ -12,7 +12,7 @@ from tornado_sqlalchemy import SQLAlchemy
 from traitlets.config import Application, catch_config_error
 
 from traitlets import List, Bool, Integer, Set, Unicode, Dict, Any, default, observe, Instance, Float, validate, Bytes, Type, TraitError, Int
-from .handlers import Template404, HealthCheckHandler, GetUser
+from .handlers import Template404, HealthCheckHandler, GetUser, GetUsers
 from .users import UserConfigurator, NFSUserConfigurator
 
 from .utils import url_path_join
@@ -163,6 +163,7 @@ class UserDataHub(Application):
         self.log.info("Initializing handlers.")
         self.handlers = [
                          (r"/get-user", GetUser),
+                         (r"/get-all-users", GetUsers),
                          (r'/health$', HealthCheckHandler),
                          (r'(.*)', Template404)
                          ]

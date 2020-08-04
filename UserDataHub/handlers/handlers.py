@@ -29,7 +29,7 @@ class Template404(BaseHandler):
         super().prepare()
         raise web.HTTPError(404)
 
-class GetUser(BaseHandler):
+class UserAPI(BaseHandler):
 
     @property
     def configurator(self):
@@ -38,6 +38,8 @@ class GetUser(BaseHandler):
     @property
     def auth_token_valid_time(self):
         return self.settings.get('auth_token_valid_time')
+
+class GetUser(UserAPI):
 
     def get(self):
         if self.get_argument('user', False):
@@ -57,10 +59,37 @@ class GetUser(BaseHandler):
                 
                 self.write(signed_data)
 
-            else:
+        else:
 
-                self.log.warning("Query is malformed.")
-                raise web.HTTPError(400)
+            self.log.warning("Query is malformed for user access.")
+            raise web.HTTPError(400)
+
+        self.finish()
+
+class GetUsers(UserAPI):
+
+    def get(self):
+        if self.get_argument('all', False):
+            value = self.get_secure_cookie(name='all_user_data', value=self.get_argument('all'), max_age_days=self.auth_token_valid_time/86400)
+            if value is not None:
+                value = value.decode('utf-8')
+                if not value == "all":
+                    self.log.warning("Attempted access of user list, but malformed query.")
+                self.set_header('Content-Type', 'text/plain')
+                data = {}
+                for key in self.configurator.user_dict.keys():
+                    data[key] = {'admin': self.configurator.user_dict[key].get('admin', False)}
+
+                
+                encoded_data = json.dumps(data).encode('utf-8')
+                signed_data = self.create_signed_value(name='all_user_data', value=encoded_data)
+                
+                self.write(signed_data)
+
+        else:
+
+            self.log.warning("Query is malformed.")
+            raise web.HTTPError(400)
 
         self.finish()
 
