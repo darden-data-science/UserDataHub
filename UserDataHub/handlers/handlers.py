@@ -44,6 +44,7 @@ class GetUser(UserAPI):
     def get(self):
         if self.get_argument('user', False):
             user = self.get_secure_cookie(name='user_data', value=self.get_argument('user'), max_age_days=self.auth_token_valid_time/86400)
+            self.log.debug("auth_token_valid_time is %r" % self.auth_token_valid_time)
             if user is not None:
                 user = user.decode('utf-8')
                 self.set_header('Content-Type', 'text/plain')
@@ -59,9 +60,13 @@ class GetUser(UserAPI):
                 
                 self.write(signed_data)
 
-        else:
+            
+            else:
+                self.log.warning("Query is malformed for user access.")
+                raise web.HTTPError(400)
 
-            self.log.warning("Query is malformed for user access.")
+        else:
+            self.log.warning("Query does not include the user keyword.")
             raise web.HTTPError(400)
 
         self.finish()
@@ -75,6 +80,7 @@ class GetUsers(UserAPI):
                 value = value.decode('utf-8')
                 if not value == "all":
                     self.log.warning("Attempted access of user list, but malformed query.")
+                    raise web.HTTPError(400)
                 self.set_header('Content-Type', 'text/plain')
                 data = {}
                 for key in self.configurator.user_dict.keys():
@@ -85,10 +91,13 @@ class GetUsers(UserAPI):
                 signed_data = self.create_signed_value(name='all_user_data', value=encoded_data)
                 
                 self.write(signed_data)
-
+            
+            else:
+                self.log.warning("Query is malformed for all user access.")
+                raise web.HTTPError(400)
+        
         else:
-
-            self.log.warning("Query is malformed for all user list access.")
+            self.log.warning("Query does not include the all keyword.")
             raise web.HTTPError(400)
 
         self.finish()
