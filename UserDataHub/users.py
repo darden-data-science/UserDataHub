@@ -423,7 +423,7 @@ class NFSUserConfigurator(UserConfigurator):
 
         self.root_path = Path(self.root_path)
 
-        print("NFSUserConfigurator is creating the necessary file structure...")
+        self.log.info("NFSUserConfigurator is creating the necessary file structure...")
         self.create_file_structure()
 
 
@@ -650,7 +650,6 @@ class NFSUserConfigurator(UserConfigurator):
 
 def main():
     test_path = Path(__file__).parent.parent.absolute().joinpath((Path('tests/test.yaml')))
-    print(test_path)
     with open(test_path, 'r') as f:
         test_dict = yaml.full_load(f)
 
