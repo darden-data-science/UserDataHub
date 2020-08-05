@@ -1,18 +1,14 @@
 from traitlets.config import LoggingConfigurable
-from traitlets import Bool, Integer, Set, Unicode, Dict, Any, default, Instance
+from traitlets import Bool, Any, Unicode
 
 import yaml
-# import hashlib
 import os
-import shutil
-# import subprocess
 from pathlib import Path
 import copy
-import math
-import logging
+import escapism
+import string
 
 from collections.abc import Mapping
-from functools import lru_cache, reduce, partial
 
 
 def merge(a, b, append=False):
@@ -36,6 +32,9 @@ def merge(a, b, append=False):
     return merged
 
 def _merge_lists(a, b, append=False):
+    """
+    Merge two lists.
+    """
     merged = b.copy()
     if append:
         temp_list = a
@@ -44,6 +43,9 @@ def _merge_lists(a, b, append=False):
     return merged
 
 def _merge_strings(a, b, append=False):
+    """
+    Merge two strings.
+    """
     merged = b
     if append:
         merged = a + b
@@ -93,78 +95,9 @@ def intersperse(lst, item, prepend_if_nonzero=False):
         result = [item] + result
     return result
 
-def get_list_of_keys(d_or_l, keys_list):
-    """
-    This allows me to get all keys in a dictionary recursively. I use this
-    to check to see if profile_list is set anywhere in the user specific
-    config. If it is, then I have to use the custom options form
-    approach. If not, I can start all servers at the same time.
-    """
-    if isinstance(d_or_l, dict):
-        for k, v in iter(sorted(d_or_l.items())):
-            if isinstance(v, list):
-                get_list_of_keys(v, keys_list)
-            elif isinstance(v, dict):
-                get_list_of_keys(v, keys_list)
-            keys_list.append(k)   #  Altered line
-    elif isinstance(d_or_l, list):
-        for i in d_or_l:
-            if isinstance(i, list):
-                get_list_of_keys(i, keys_list)
-            elif isinstance(i, dict):
-                get_list_of_keys(i, keys_list)
-    # return keys_list
 
 
-def gitpuller_string(git_repos):
-    r"""
-    This constructs the final gitpuller string to pass as an environmental
-    variable. Individual repos are separated by "\`", and the elements of
-    the repo are separated by "^".
-    """
-    if not git_repos:
-        return ""
-    gp_string = ""
-    unique_repos = []
-    for repo in git_repos:
-        if repo not in unique_repos:
-            unique_repos.extend([repo])
-    for git_pull in unique_repos:
-        if not type(git_pull) is dict:
-            continue
-        if not git_pull.get('url'):
-            continue
-        if not git_pull.get('branch'):
-            git_pull['branch'] = "master"
-        if not git_pull.get('folder'):
-            git_pull['folder'] = git_pull['url'].rsplit('/', 1)[-1]
-        if git_pull.get('subfolder'):
-            git_pull['subfolder'] = Path(git_pull.get('subfolder'))
-            git_pull['folder'] = git_pull['subfolder'].joinpath(git_pull['folder'])
-        # git_pull['folder'] = Path("${HOME}").joinpath(git_pull['folder'])
-        git_pull_string = "^".join([git_pull.get('url'),
-                                    git_pull.get('branch'),
-                                    str(git_pull.get('folder'))])
-        gp_string = r"\`".join([gp_string, git_pull_string])
-    return gp_string
-
-
-
-def modify_gitPuller_folder(subfolder, gitPuller):
-    """
-    This modifies the gitpuller entry so that the repo is cloned into a
-    subsection (or group) if the section that it is in is below the root
-    section for the user.
-    """
-    for git_repo in gitPuller:
-        if type(git_repo) is not dict:
-            continue
-        else:
-            git_repo['subfolder'] = subfolder.joinpath(git_repo.get("subfolder", ""))
-
-
-
-def create_directory(path, uid=1000, gid=1000, mode=0o750, sticky_bit=False):
+def create_directory(path, uid=1000, gid=100, mode=0o750, sticky_bit=False):
     """
     Helper function to create directories with the proper ownership and permissions.
     """
@@ -173,19 +106,26 @@ def create_directory(path, uid=1000, gid=1000, mode=0o750, sticky_bit=False):
     if sticky_bit:
         effective_mode = stat.S_ISGID | mode
     path.mkdir(mode=0o750, exist_ok=True)
-    # os.chown(str(path), uid, gid)
     path.chmod(mode=effective_mode)
+
+
+def get_escaped_string(value):
+    """
+    This allows me to escape names just like kubespawner does.
+    """
+    safe_chars = set(string.ascii_lowercase + string.digits)
+    return escapism.escape(value, safe=safe_chars, escape_char='-').lower().rstrip("-")
 
 
 
 class UserConfigurator(LoggingConfigurable):
 
     enable_custom_allowed = Bool(
-        default_value=False,
+        default_value=True,
         help="""
         Whether or not to only allow users in the list.
         """
-    ).tag(config=True)
+    )
 
     def __init__(self, 
                  section_dict, 
@@ -198,9 +138,7 @@ class UserConfigurator(LoggingConfigurable):
         self.log.info("Initializing the UserConfigurator")
         self.section_dict = self.get_section_dict(section_dict)
         self.user_dict = self.get_user_dict()
-        if enable_custom_allowed is not None:
-            self.enable_custom_allowed = enable_custom_allowed
-
+        self.enable_custom_allowed = self.section_dict.get('enableCustomAllowed', True)
 
 
     def get_user_data(self, username):
@@ -224,12 +162,20 @@ class UserConfigurator(LoggingConfigurable):
         self.log.info("Creating user dictionary for user %r." % username)
 
         section_data = self.get_section_data(username, path)
+        custom_data = self.get_custom_data()
 
         default_user_data = {"admin": False,
                              "sections": [section_data],
+                             "custom": custom_data,
                              "root": copy.deepcopy(path)}
 
         return default_user_data
+
+    def get_custom_data(self):
+        if type(self.section_dict.get('custom')) is dict:
+            return self.section_dict.get('custom')
+        else:
+            return {}
 
     def get_section_data(self, username, path):
         """
@@ -340,12 +286,14 @@ class UserConfigurator(LoggingConfigurable):
 
         return user_data
 
-    def get_section_dict(self, section_info):
+    def get_section_dict(self, section_dict):
         """
         Gets the section dictionary.
         """
-        # section_dict = self.add_uid_section_group(section_info)
-        return section_info
+        if type(section_dict) is dict:
+            return section_dict
+        else:
+            return {}
 
     def get_user_dict(self):
         """
@@ -353,14 +301,12 @@ class UserConfigurator(LoggingConfigurable):
         """
         self.log.info("Getting the user_dict.")
         # Get the user_dict with all explicitly set sections
-        # add_uid_section_group(section_dict)
         user_dict = self.get_users_from_sections()
 
         # Now we get the paths from root to each section. Once we sort these, we
         # will be able to get the root.
         for user, user_data in user_dict.items():
             user_dict[user] = self.get_user_root(user, user_data)
-            # user_dict[user] = self.get_user_groups(user_data)
 
         return user_dict
 
@@ -378,22 +324,6 @@ class NFSUserConfigurator(UserConfigurator):
         """
     ).tag(config=True)
 
-    nfs_pvc_name_readwrite = Unicode(
-        default_value="nfs-data-readwrite",
-        allow_none=False,
-        help="""
-        The name of the PVC that the user container should use for readwrite nfs data.
-        """
-    ).tag(config=True)
-
-    nfs_pvc_name_readonly = Unicode(
-        default_value="nfs-data-readonly",
-        allow_none=False,
-        help="""
-        The name of the PVC that the user container should use for read only nfs data.
-        """
-    ).tag(config=True)
-
     user_section_base_folder = Unicode(
         default_value="/mnt/efs",
         allow_none=False,
@@ -401,14 +331,6 @@ class NFSUserConfigurator(UserConfigurator):
         The location that will be the root path for mounting group folders.
         """
     ).tag(config=True)
-
-    # profile_files_folder = Unicode(
-    #     default_value="/etc/userdatahub/profile_files",
-    #     allow_none=False,
-    #     help="""
-    #     The location that will house files to copy to the user directories.
-    #     """
-    # ).tag(config=True)
 
     def __init__(self, 
                  section_dict, 
@@ -437,10 +359,9 @@ class NFSUserConfigurator(UserConfigurator):
 
     def create_base_folders(self, section_dict, root_path):
         """
-        Create all folders for all sections and the sub folders for groups and users.
+        Create all folders for all sections and the sub folders for groups.
         This recurses so it needs the section_dict given explicitly.
         """
-        # section_uid = section_dict["section_uid"]
         section_uid = 1000
         create_directory(root_path, gid=section_uid, mode=0o750)
 
@@ -449,13 +370,6 @@ class NFSUserConfigurator(UserConfigurator):
             if len(section_dict.get("groups")) > 0:
                 create_directory(root_path.joinpath("groups/"), gid=section_uid, mode=0o750)
                 self.create_group_folders(section_dict, root_path.joinpath("groups/"))
-        # if type(section_dict.get("users")) is dict:
-        #     if len(section_dict.get("users")) > 0:
-
-        # # Create users folder
-        # if type(section_dict.get("users")) is dict:
-        #     if len(section_dict.get("users")) > 0:
-        #         create_directory(root_path.joinpath("users/"), gid=section_uid)
 
         # Create sections folder and recurse
         if type(section_dict.get("sections")) is dict:
@@ -484,9 +398,12 @@ class NFSUserConfigurator(UserConfigurator):
         This function will set up the home folders for the user.
         """
 
-        self.parent.log.info("Initializing home folder for %r." % username)
+        self.log.debug("Initializing home folder for %r." % username)
 
         user_data = self.get_user_data(username)
+
+        escaped_username = get_escaped_string(username)
+        self.log.debug("Creating home directory for user %r with escaped username of %r" % (username, escaped_username))
 
         # If you don't have a valid authname, no reason to make your folders.
         if user_data.get('authName') == 'null_authName_invalid':
@@ -504,35 +421,18 @@ class NFSUserConfigurator(UserConfigurator):
         create_directory(users_folder,
                         gid = 1000,
                         mode = 0o750)
-        user_folder = users_folder.joinpath(username + "/")
-        create_directory(user_folder, uid = uid, gid = uid, mode = mode)
-        # trash_folder = self.root_path.joinpath(".Trash-" + str(uid) + "/")
-        # create_directory(trash_folder, uid=uid, gid=uid, mode=mode)
-        # I need to set up the profile files
-        # self.log.info("Copying files into home folder.")
-        # skel_path = Path(self.profile_files_folder)
-        # if skel_path.is_dir():
-        #     for root, dirs, files in os.walk(skel_path, followlinks=True):
-        #         relative_path = os.path.relpath(root, skel_path)
-        #         for file_ in files:
-        #             if not user_folder.joinpath(relative_path).joinpath(file_).exists():
-        #                 shutil.copy(Path(root).joinpath(file_), user_folder.joinpath(relative_path).joinpath(file_))
-        #                 # os.chown(user_folder.joinpath(relative_path).joinpath(file_), uid=1000, gid=1000)
-        #         for dir_ in dirs:
-        #             create_directory(user_folder.joinpath(relative_path).joinpath(dir_))
-                    # os.chown(user_folder.joinpath(relative_path).joinpath(dir_), uid=1000, gid=1000)
+        user_folder = users_folder.joinpath(escaped_username + "/")
+        create_directory(user_folder, uid = uid, gid = uid, mode = mode, sticky_bit=True)
 
-            # for file in skel_path.iterdir():
-            #     if not user_folder.joinpath(file.name).exists():
-            #         shutil.copy(file, user_folder.joinpath(file.name))
-            #         # os.chown(user_folder.joinpath(file.name), uid=uid, gid=uid)
         self.symlink_group_folders(user_folder, user_data)
         return
 
 
     def symlink_group_folders(self, user_folder, user_data):
+        """
+        This creates symlinks pointing to the right place for group folders.
+        """
         root = user_data.get("root", [])
-        # uid = user_data["uid"]
         uid = 1000
         mode = 0o750
         for section in user_data.get('sections', []):
@@ -567,14 +467,12 @@ class NFSUserConfigurator(UserConfigurator):
                     src = new_src
 
                 src.symlink_to(dest, target_is_directory=True)
-                # os.chown(src, uid=1000, gid=1000, follow_symlinks=False)
         return
 
 
     def get_user_dict(self):
         self.user_dict = super().get_user_dict()
         for _, user_data in self.user_dict.items():
-            self.get_extra_volumes(user_data)
             self.get_extra_volume_mounts(user_data)
 
         return self.user_dict
@@ -583,34 +481,9 @@ class NFSUserConfigurator(UserConfigurator):
         """
         This returns the user data if it exists. If not, it initializes it to default.
         """
-        if username in self.user_dict:
-            return self.user_dict[username]
-        elif self.enable_custom_allowed:
-            # If the user is not in the user_dict, then return None.
-            return None
-        else:
-            user_data = self.create_user_dict(username)
-            user_data = self.get_extra_volumes(user_data)
+        user_data = super().get_user_data(username)
+        if user_data is not None:
             user_data = self.get_extra_volume_mounts(user_data)
-            return user_data
-
-    def get_extra_volumes(self, user_data):
-        """
-        This gets the extra volumes and appends them to the last user_config so they cannot be overridden.
-        """
-        # user_data = self.user_dict[username]
-
-        last_section = user_data.get('sections', [])[-1]
-        extra_volumes = [
-            {'name': 'nfs_readwrite',
-             'persistentVolumeClaim': {
-                 'claimName': self.nfs_pvc_name_readwrite}},
-            {'name': 'nfs_readonly',
-             'persistentVolumeClaim': {
-                 'claimName': self.nfs_pvc_name_readonly}},
-        ]
-
-        last_section['user_config']['configAppend']['volumes'] = merge(last_section['user_config']['configAppend'].get('volumes', None), extra_volumes, append=True)
 
         return user_data
 
@@ -620,31 +493,27 @@ class NFSUserConfigurator(UserConfigurator):
         This gets the extra volume mounts and appends them to the last user_config so they cannot be overridden.
         """
 
-
         last_section = user_data.get('sections', [])[-1]
-
 
         extra_volume_mounts = []
         for section in user_data.get('sections', []):
             for group in section.get('groups', {}):
-                if group.get('readOnly', False):
-                    volume_name = 'nfs_readonly'
+                volume_name = "home"
+                if group.get('readOnly', False) and not user_data.get('admin', False):
+                    read_only = True
                 else:
-                    volume_name = 'nfs_readwrite'
+                    read_only = False
                 volume_mount = {
                     'mountPath': self.user_section_base_folder + "/"
-                                    + '/'.join(intersperse(section['section_path'], 'section', prepend_if_nonzero=True) + ['groups', group['group_name']]),
-                    'subPath': '/'.join(intersperse(section['section_path'], 'section', prepend_if_nonzero=True))
-                                    + '/groups/' + group['group_name'],
-                    'name': volume_name
+                                    + '/'.join(intersperse(section['section_path'], 'sections', prepend_if_nonzero=True) + ['groups', group['group_name']]),
+                    'subPath': '/'.join(intersperse(section['section_path'], 'sections', prepend_if_nonzero=True) + ['groups', group['group_name']]),
+                    'name': volume_name,
+                    'readOnly': read_only
                 }
                 extra_volume_mounts.append(volume_mount)
 
         last_section['user_config']['configAppend']['volume_mounts'] = merge(last_section['user_config']['configAppend'].get('volume_mounts', None), extra_volume_mounts, append=True)
         return user_data
-
-
-
 
 
 

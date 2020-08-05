@@ -2,3 +2,4 @@ tornado>=6.0.0
 traitlets>=4.3.3
 tornado-sqlalchemy>=0.7.0
 pyyaml>=5.3.1
+escapism>=1.0.1
