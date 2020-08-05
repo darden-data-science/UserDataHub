@@ -28,9 +28,14 @@ COOKIE_SECRET_BYTES = (
 
 _mswindows = os.name == "nt"
 
+# This is the time in seconds that the server will wait to clean up connections
+# before forcing shutdown after sigint received.
 TORNADO_SHUTDOWN_WAIT=10
 
 class UserDataHub(Application):
+    """
+    Main application.
+    """
 
     aliases = {
         'log_level': 'UserDataHub.log_level',
@@ -142,12 +147,15 @@ class UserDataHub(Application):
         with open(self.config_file, mode='w') as f:
             f.write(config_text)
 
-
+    # This sets the classes so that classes show up in the config file.
     classes = [UserConfigurator, NFSUserConfigurator]
 
 
     @catch_config_error
     def initialize(self, *args, **kwargs):
+        """
+        Initialize everything.
+        """
         super().initialize(*args, **kwargs)
         self.log.info("Initializing UserDataHub")
         self.parse_command_line(*args, **kwargs)
@@ -225,6 +233,10 @@ class UserDataHub(Application):
         self.tornado_app = web.Application(handlers=self.handlers, **self.tornado_settings)
 
     def init_secrets(self):
+        """
+        This makes sure the cookie_secret is loaded correctly. This is copied 
+        from Jupyterhub in order to ensure that the cookie secret is loaded consistently.
+        """
         trait_name = 'cookie_secret'
         trait = self.traits()[trait_name]
         env_name = trait.metadata.get('env')
@@ -279,6 +291,9 @@ class UserDataHub(Application):
         self.cookie_secret = secret
 
     def sig_handler(self, server, sig, frame):
+        """
+        This handles signal interrupts gracefully. Copied from gist online.
+        """
         io_loop = tornado.ioloop.IOLoop.instance()
 
         def stop_loop(server: Any, deadline: float):
