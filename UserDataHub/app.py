@@ -177,7 +177,7 @@ class UserDataHub(Application):
         self.log.info("Initializing handlers.")
         self.handlers = [
                          (r"/get-user", GetUser),
-                         (r"/get-all-users", GetUsers),
+                        #  (r"/get-all-users", GetUsers),
                          (r'/health$', HealthCheckHandler),
                          (r'(.*)', Template404)
                          ]
