@@ -362,19 +362,19 @@ class NFSUserConfigurator(UserConfigurator):
         Create all folders for all sections and the sub folders for groups.
         This recurses so it needs the section_dict given explicitly.
         """
-        section_uid = 1000
-        create_directory(root_path, gid=section_uid, mode=0o750)
+
+        create_directory(root_path)
 
         # Create groups folder
         if type(section_dict.get("groups")) is dict:
             if len(section_dict.get("groups")) > 0:
-                create_directory(root_path.joinpath("groups/"), gid=section_uid, mode=0o750)
+                create_directory(root_path.joinpath("groups/"))
                 self.create_group_folders(section_dict, root_path.joinpath("groups/"))
 
         # Create sections folder and recurse
         if type(section_dict.get("sections")) is dict:
             if len(section_dict.get("sections")) > 0:
-                create_directory(root_path.joinpath("sections/"), gid=section_uid, mode=0o750)
+                create_directory(root_path.joinpath("sections/"))
             for subsection, section_data in section_dict.get("sections", {}).items():
                 self.create_base_folders(section_data, root_path.joinpath(Path("sections/" + subsection)))
         return
@@ -384,13 +384,10 @@ class NFSUserConfigurator(UserConfigurator):
         Create all group folders in the section.
         """
         
-        # section_admin_uid = section_dict.get("section_admin_uid", 0)
         if type(section_dict.get("groups")) is dict:
             for group, group_data in section_dict.get("groups", {}).items():
                 if type(group_data) is dict:
-                    mode = 0o750
-                    group_uid = 1000
-                    create_directory(root_path.joinpath(group), gid=group_uid, mode=mode, sticky_bit=True)
+                    create_directory(root_path.joinpath(group))
         return
 
     def create_home_folder(self, username):
@@ -408,9 +405,6 @@ class NFSUserConfigurator(UserConfigurator):
         # If you don't have a valid authname, no reason to make your folders.
         if user_data.get('authName') == 'null_authName_invalid':
             return
-        # uid = user_data["uid"]
-        uid = 1000
-        mode = 0o750
         root = user_data.get("root", [])
         # username = user_data.get("username", user)
         if len(root) > 0:
@@ -418,11 +412,9 @@ class NFSUserConfigurator(UserConfigurator):
         else:
             users_folder = self.root_path.joinpath("users/")
         # This creates the user folder when we first see someone with that root
-        create_directory(users_folder,
-                        gid = 1000,
-                        mode = 0o750)
+        create_directory(users_folder)
         user_folder = users_folder.joinpath(escaped_username + "/")
-        create_directory(user_folder, uid = uid, gid = uid, mode = mode, sticky_bit=True)
+        create_directory(user_folder)
 
         self.symlink_group_folders(user_folder, user_data)
         return
@@ -433,8 +425,6 @@ class NFSUserConfigurator(UserConfigurator):
         This creates symlinks pointing to the right place for group folders.
         """
         root = user_data.get("root", [])
-        uid = 1000
-        mode = 0o750
         for section in user_data.get('sections', []):
             for group in section.get('groups', []):
                 section_path = section.get('section_path')
@@ -442,10 +432,7 @@ class NFSUserConfigurator(UserConfigurator):
                 sections = []
                 for section_name in section_path[len(root):]:
                     sections = sections + [section_name]
-                    create_directory(Path(user_folder).joinpath("/".join(sections)),
-                                    uid = uid,
-                                    gid = uid,
-                                    mode=mode)
+                    create_directory(Path(user_folder).joinpath("/".join(sections)))
                 
                 src = Path(user_folder).joinpath("/".join(section_path)).joinpath(group["group_name"])
                 dest = Path(self.user_section_base_folder).joinpath("/".join(intersperse(section_path, 'sections', prepend_if_nonzero=True) 
