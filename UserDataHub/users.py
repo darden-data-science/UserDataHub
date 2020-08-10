@@ -483,21 +483,32 @@ class NFSUserConfigurator(UserConfigurator):
         last_section = user_data.get('sections', [])[-1]
 
         extra_volume_mounts = []
-        for section in user_data.get('sections', []):
-            for group in section.get('groups', {}):
-                volume_name = "home"
-                if group.get('readOnly', False) and not user_data.get('admin', False):
-                    read_only = True
-                else:
-                    read_only = False
-                volume_mount = {
-                    'mountPath': self.user_section_base_folder + "/"
-                                    + '/'.join(intersperse(section['section_path'], 'sections', prepend_if_nonzero=True) + ['groups', group['group_name']]),
-                    'subPath': '/'.join(intersperse(section['section_path'], 'sections', prepend_if_nonzero=True) + ['groups', group['group_name']]),
-                    'name': volume_name,
-                    'readOnly': read_only
-                }
-                extra_volume_mounts.append(volume_mount)
+        if not user_data.get('admin', False):
+            for section in user_data.get('sections', []):
+                for group in section.get('groups', {}):
+                    volume_name = "home"
+                    if group.get('readOnly', False) and not user_data.get('admin', False):
+                        read_only = True
+                    else:
+                        read_only = False
+                    volume_mount = {
+                        'mountPath': self.user_section_base_folder + "/"
+                                        + '/'.join(intersperse(section['section_path'], 'sections', prepend_if_nonzero=True) + ['groups', group['group_name']]),
+                        'subPath': '/'.join(intersperse(section['section_path'], 'sections', prepend_if_nonzero=True) + ['groups', group['group_name']]),
+                        'name': volume_name,
+                        'readOnly': read_only
+                    }
+                    extra_volume_mounts.append(volume_mount)
+        elif user_data.get('admin', False):
+            # This is so that the admin user has access to all of the files from the mount point.
+            volume_name = "home"
+            read_only = False
+            volume_mount = {
+                'mountPath': self.user_section_base_folder,
+                'name': volume_name,
+                'readOnly': read_only
+            }
+            extra_volume_mounts.append(volume_mount)
 
         last_section['user_config']['configAppend']['volume_mounts'] = merge(last_section['user_config']['configAppend'].get('volume_mounts', None), extra_volume_mounts, append=True)
         return user_data
